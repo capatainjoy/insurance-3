@@ -6,10 +6,20 @@ import streamlit as st
 import pandas as pd
 import joblib
 
-# 🔥 IMPORTANT IMPORTS (Fixes AttributeError)
+# 🔥 FIX: PATCH sklearn internal error (_RemainderColsList)
+import sklearn.compose._column_transformer as ct
+
+if not hasattr(ct, "_RemainderColsList"):
+    class _RemainderColsList(list):
+        pass
+    ct._RemainderColsList = _RemainderColsList
+
+# ================================
+# IMPORTANT IMPORTS (REQUIRED)
+# ================================
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.preprocessing import OneHotEncoder
 from sklearn.linear_model import LinearRegression
 
 # ================================
@@ -22,7 +32,7 @@ st.set_page_config(
 )
 
 # ================================
-# LOAD MODEL (SAFE + CACHED)
+# LOAD MODEL
 # ================================
 @st.cache_resource
 def load_model():
@@ -34,53 +44,34 @@ def load_model():
         return None
 
 # ================================
-# CUSTOM CSS (PREMIUM UI)
+# UI DESIGN
 # ================================
 st.markdown("""
 <style>
 body {
     background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
 }
-.main {
-    background: rgba(255,255,255,0.05);
-    padding: 20px;
-    border-radius: 20px;
-    backdrop-filter: blur(12px);
-}
 h1 {
     text-align: center;
     color: #00ffe1;
-    font-size: 40px;
 }
 .stButton>button {
     width: 100%;
-    height: 55px;
-    border-radius: 14px;
-    font-size: 18px;
+    height: 50px;
+    border-radius: 12px;
     background: linear-gradient(45deg, #00ffe1, #007cf0);
-    color: black;
-    border: none;
-    transition: 0.3s;
-}
-.stButton>button:hover {
-    transform: scale(1.05);
 }
 .result-box {
     background: linear-gradient(45deg, #00ffe1, #00c6ff);
-    padding: 25px;
-    border-radius: 15px;
+    padding: 20px;
+    border-radius: 10px;
     text-align: center;
-    font-size: 28px;
-    font-weight: bold;
-    color: black;
+    font-size: 26px;
     margin-top: 20px;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# ================================
-# TITLE
-# ================================
 st.markdown("<h1>💰 Insurance Cost Prediction</h1>", unsafe_allow_html=True)
 
 # ================================
@@ -92,7 +83,7 @@ if model is None:
     st.stop()
 
 # ================================
-# INPUT SECTION
+# INPUTS
 # ================================
 col1, col2 = st.columns(2)
 
@@ -107,34 +98,27 @@ with col2:
     region = st.selectbox("Region", ["southwest", "southeast", "northwest", "northeast"])
 
 # ================================
-# PREDICTION BUTTON
+# PREDICTION
 # ================================
 if st.button("🚀 Predict Insurance Cost"):
 
-    # Input validation
-    if bmi <= 0:
-        st.error("❌ BMI must be positive")
-    else:
-        try:
-            # Create DataFrame (correct format)
-            input_df = pd.DataFrame({
-                "age": [age],
-                "sex": [sex],
-                "bmi": [bmi],
-                "children": [children],
-                "smoker": [smoker],
-                "region": [region]
-            })
+    try:
+        input_df = pd.DataFrame({
+            "age": [age],
+            "sex": [sex],
+            "bmi": [bmi],
+            "children": [children],
+            "smoker": [smoker],
+            "region": [region]
+        })
 
-            # Prediction
-            with st.spinner("🔮 Predicting... Please wait"):
-                prediction = model.predict(input_df)[0]
+        with st.spinner("🔮 Predicting..."):
+            prediction = model.predict(input_df)[0]
 
-            # Result display
-            st.markdown(
-                f'<div class="result-box">💰 Estimated Cost: ₹ {prediction:,.2f}</div>',
-                unsafe_allow_html=True
-            )
+        st.markdown(
+            f'<div class="result-box">💰 Estimated Cost: ₹ {prediction:,.2f}</div>',
+            unsafe_allow_html=True
+        )
 
-        except Exception as e:
-            st.error(f"❌ Prediction Error: {e}")
+    except Exception as e:
+        st.error(f"❌ Prediction Error: {e}")
