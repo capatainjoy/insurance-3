@@ -6,6 +6,12 @@ import streamlit as st
 import pandas as pd
 import joblib
 
+# 🔥 IMPORTANT IMPORTS (Fixes AttributeError)
+from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.linear_model import LinearRegression
+
 # ================================
 # PAGE CONFIG
 # ================================
@@ -16,14 +22,19 @@ st.set_page_config(
 )
 
 # ================================
-# LOAD MODEL (FAST & CACHED)
+# LOAD MODEL (SAFE + CACHED)
 # ================================
 @st.cache_resource
 def load_model():
-    return joblib.load("model.pkl")
+    try:
+        model = joblib.load("model.pkl")
+        return model
+    except Exception as e:
+        st.error(f"❌ Model Loading Failed: {e}")
+        return None
 
 # ================================
-# CUSTOM CSS (PREMIUM FUTURISTIC UI)
+# CUSTOM CSS (PREMIUM UI)
 # ================================
 st.markdown("""
 <style>
@@ -73,6 +84,14 @@ h1 {
 st.markdown("<h1>💰 Insurance Cost Prediction</h1>", unsafe_allow_html=True)
 
 # ================================
+# LOAD MODEL
+# ================================
+model = load_model()
+
+if model is None:
+    st.stop()
+
+# ================================
 # INPUT SECTION
 # ================================
 col1, col2 = st.columns(2)
@@ -92,33 +111,30 @@ with col2:
 # ================================
 if st.button("🚀 Predict Insurance Cost"):
 
-    # Load model only when needed (faster startup)
-    model = load_model()
-
     # Input validation
     if bmi <= 0:
         st.error("❌ BMI must be positive")
     else:
-        # Create DataFrame (IMPORTANT FIX)
-        input_df = pd.DataFrame({
-            "age": [age],
-            "sex": [sex],
-            "bmi": [bmi],
-            "children": [children],
-            "smoker": [smoker],
-            "region": [region]
-        })
-
         try:
-            # Loading animation
+            # Create DataFrame (correct format)
+            input_df = pd.DataFrame({
+                "age": [age],
+                "sex": [sex],
+                "bmi": [bmi],
+                "children": [children],
+                "smoker": [smoker],
+                "region": [region]
+            })
+
+            # Prediction
             with st.spinner("🔮 Predicting... Please wait"):
                 prediction = model.predict(input_df)[0]
 
-            # Show result
+            # Result display
             st.markdown(
                 f'<div class="result-box">💰 Estimated Cost: ₹ {prediction:,.2f}</div>',
                 unsafe_allow_html=True
             )
 
         except Exception as e:
-            st.error(f"❌ Error: {e}")
+            st.error(f"❌ Prediction Error: {e}")
